@@ -1,5 +1,7 @@
 const User = require("../model/userModel");
+const AppError = require("../utils/appError");
 const catchAsync = require("../utils/catchAsync");
+const sendEmail = require("../utils/email");
 const generateOtp = require("../utils/generateOtp");
 const jwt = require("jsonwebtoken");
 
@@ -46,7 +48,7 @@ exports.signup = catchAsync(async(req, res, next) => {
 
     const otp = generateOtp();
 
-    const otpExpires = Date.now() * 24 * 60 * 60 * 1000;
+    const otpExpires = Date.now() + 24 * 60 * 60 * 1000;
 
     const newUser = await User.create({
         userName,
@@ -57,5 +59,16 @@ exports.signup = catchAsync(async(req, res, next) => {
         otpExpires,
     });
 
-    
+    try {
+        await sendEmail({
+            email: newUser.email,
+            subject: "OTP for email verification",
+            html: `<h1>Your OTP is: ${otp}</h1>`
+        });
+
+        createSendToken(newUser, 200, res, "Registration Successful");
+    } catch (error) {
+        await User.findByIdAndDelete(newUser.id);
+        return next(new AppError("Error sending the email. Try again!", 500));
+    }
 })

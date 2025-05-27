@@ -1,7 +1,9 @@
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
-const globalErrorHandler = require("./controller/errorController")
+const globalErrorHandler = require("./controller/errorController");
+const userRouter = require("./routes/userRouter");
+const AppError = require("./utils/appError");
 
 const app = express();
 
@@ -15,6 +17,8 @@ app.use(cors({
 app.use(express.json({limit: '10kb'}));
 
 //Users api urls
+app.use("/api/v1/users", userRouter);
+
 app.use((req, res, next) => {
     next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
 });
