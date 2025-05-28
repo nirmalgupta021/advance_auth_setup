@@ -113,3 +113,55 @@ exports.verifyAccount = catchAsync(async(req, res, next) => {
     // Send confirmation response
     createSendToken(user, 200, res, "Your email has been successfully verified.");
 });
+
+exports.resendOTP = catchAsync(async(req, res, next) => {
+    const {email} = req.user;
+
+    // Check if email is provided
+    if (!email) {
+        return next(new AppError("Please provide an email address.", 400));
+    }
+
+    // Find the user with the given email
+    const user = await User.findOne({ email });
+
+    // If no user is found
+    if (!user) {
+        return next(new AppError("No account found with this email address.", 404));
+    }
+
+    // If user is already verified
+    if (user.isVerified) {
+        return next(new AppError("This account is already verified. No need to resend OTP.", 400));
+    }
+
+    // Generate new OTP and set expiration
+    const newOtp = generateOtp();
+    user.otp = newOtp;
+    user.otpExpires = Date.now() + 24 * 60 * 60 * 1000; // OTP valid for 24 hours
+
+    // Save user without running validation checks
+    await user.save({ validateBeforeSave: false });
+
+    try {
+        // Send OTP to user's email
+        await sendEmail({
+            email: user.email,
+            subject: "Resend OTP for Email Verification",
+            html: `<h1>Your new OTP is ${newOtp}</h1>`
+        });
+
+        // Respond with success
+        res.status(200).json({
+            status: "success",
+            message: "A new OTP has been sent to your email address.",
+        });
+    } catch (error) {
+        // If sending email fails, clear OTP fields and notify the user
+        user.otp = undefined;
+        user.otpExpires = undefined;
+        await user.save({ validateBeforeSave: false });
+
+        return next(new AppError("Failed to send OTP email. Please try again later.", 500));
+    }
+});
