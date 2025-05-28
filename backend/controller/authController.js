@@ -165,3 +165,38 @@ exports.resendOTP = catchAsync(async(req, res, next) => {
         return next(new AppError("Failed to send OTP email. Please try again later.", 500));
     }
 });
+
+exports.login = catchAsync(async (req, res, next) => {
+    const { email, password } = req.body;
+
+    // Check if email and password are provided
+    if (!email || !password) {
+        return next(new AppError("Email and password are required to log in.", 400));
+    }
+
+    // Find user and explicitly select password field
+    const user = await User.findOne({ email }).select("+password");
+
+    // Check if user exists and password is correct
+    if (!user || !(await user.correctPassword(password, user.password))) {
+        return next(new AppError("Invalid email or password. Please try again.", 401));
+    }
+
+    // Send JWT token upon successful login
+    createSendToken(user, 200, res, "Logged in successfully.");
+});
+
+exports.logout = catchAsync(async (req, res, next) => {
+    // Clear the token cookie by setting it to a short-lived value
+    res.cookie("token", "loggedout", {
+        expires: new Date(Date.now() + 10 * 1000),
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+    });
+
+    // Send logout confirmation response
+    res.status(200).json({
+        status: "success",
+        message: "You have been logged out successfully.",
+    });
+});
