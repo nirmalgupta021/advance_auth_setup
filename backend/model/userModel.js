@@ -26,13 +26,13 @@ const userSchema = new mongoose.Schema({
     },
     passwordConfirm: {
         type: String,
-        required: [true, "Please confirm your password"],
+        required: [function () { return this.isNew; }, "Please confirm your password"],
         validate: {
-            validator: function(val) {
-                return val===this.password
+            validator: function (val) {
+                return val === this.password;
             },
             message: "Passwords do not match"
-        },
+        }
     },
     isVerified: {
         type: Boolean,

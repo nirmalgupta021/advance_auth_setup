@@ -7,14 +7,13 @@ const AppError = require("./utils/appError");
 
 const app = express();
 
+app.use(express.json({limit: '10kb'}));
 app.use(cookieParser());
 
 app.use(cors({
     origin: ["http://localhost:3000"],
     credentials: true,
 }));
-
-app.use(express.json({limit: '10kb'}));
 
 //Users api urls
 app.use("/api/v1/users", userRouter);
